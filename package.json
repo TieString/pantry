@@ -16,27 +16,23 @@
   "contributes": {
     "commands": [
       {
-        "command": "pantry.helloWorld",
-        "title": "Hello World"
-      },
-      {
-				"command": "pantry.markAsSundry",
-				"title": "标记杂项"
-			}
+        "command": "pantry.markAsSundry",
+        "title": "标记杂项"
+      }
     ],
-    "views": {
-      "explorer": [
-        {
-          "id": "pantry",
-          "name": "Pantry"
-        }
-      ]
-    },
     "menus": {
       "explorer/context": [
         {
           "command": "pantry.markAsSundry",
           "group": "Pantry"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "pantry",
+          "name": "Pantry"
         }
       ]
     }

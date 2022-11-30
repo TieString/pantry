@@ -1,32 +1,37 @@
 import * as vscode from 'vscode';
 
-// 扩展激活时
+const rootPath = vscode.workspace.workspaceFolders[0].uri.path;
+let config = vscode.workspace.getConfiguration();
+let excluded: Record<string, boolean> | undefined;
+
 export function activate(context: vscode.ExtensionContext) {
-	// 执行时的输出
-	console.log('Hello VS Codes');
-
-	// 在 package.json 中注册的命令 pantry.helloWorld
-	let disposable = vscode.commands.registerCommand('pantry.helloWorld', () => {
-		// 当命令被执行时 显示消息
-		vscode.window.showInformationMessage('Hello World from pantry!');
-	});
-
-	context.subscriptions.push(disposable);
-
-	// 标记为杂项：移动到 Pantry 栏
-	let markAsSundry = vscode.commands.registerCommand("pantry.markAsSundry", async () => {
-		let answer = await vscode.window.showInformationMessage("How was your day ?", "good", "bad",);
-		if (answer === "bad") {
-			vscode.window.showInformationMessage("sorry to hear it");
-		} else {
-			console.log({ answer });
+	let markAsSundry = vscode.commands.registerCommand("pantry.markAsSundry",
+		(uri: vscode.Uri) => {
+			const filePath = uri.path,
+				relativePath = "**" + filePath.split(rootPath).join('');
+			removeFile(relativePath);
 		}
-	});
-
+	);
 	context.subscriptions.push(markAsSundry);
 }
 
 // 扩展取消激活时
 export function deactivate() {
 	vscode.window.showInformationMessage('取消激活');
+}
+
+
+/**
+ * @description 移除文件/文件夹
+ * @author TieString
+ * @date 2022/11/30
+ */
+async function removeFile(filepath: string) {
+	await config.update("files.exclude",
+		{
+			...excluded,
+			[filepath]: true,
+		},
+		vscode.ConfigurationTarget.Global
+	);
 }

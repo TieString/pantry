@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-const rootPath = vscode.workspace.workspaceFolders[0].uri.path;
+const rootPath = vscode.workspace.workspaceFolders![0].uri.path;
 let config = vscode.workspace.getConfiguration();
 let excluded: Record<string, boolean> | undefined;
 
@@ -28,7 +28,7 @@ export function deactivate() {
  */
 async function removeFile(filepath: string) {
 	await config.update("files.exclude",
-		{
+		excluded = {
 			...excluded,
 			[filepath]: true,
 		},

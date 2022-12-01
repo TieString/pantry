@@ -27,11 +27,12 @@ export function deactivate() {
  * @date 2022/11/30
  */
 async function removeFile(filepath: string) {
+	// Todo: 在 excluded 中标记杂物间的杂项
 	await config.update("files.exclude",
 		excluded = {
 			...excluded,
-			[filepath]: true,
+			[filepath]: true, // markAsSundry
 		},
-		vscode.ConfigurationTarget.Global
+		vscode.ConfigurationTarget.Workspace
 	);
 }

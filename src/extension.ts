@@ -1,15 +1,15 @@
 import * as vscode from 'vscode';
+import { hideFile } from './file';
 
 const rootPath = vscode.workspace.workspaceFolders![0].uri.path;
-let config = vscode.workspace.getConfiguration();
-let excluded: Record<string, boolean> | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
+	// 标记为杂项
 	let markAsSundry = vscode.commands.registerCommand("pantry.markAsSundry",
 		(uri: vscode.Uri) => {
 			const filePath = uri.path,
 				relativePath = "**" + filePath.split(rootPath).join('');
-			removeFile(relativePath);
+			hideFile(relativePath);
 		}
 	);
 	context.subscriptions.push(markAsSundry);
@@ -18,21 +18,4 @@ export function activate(context: vscode.ExtensionContext) {
 // 扩展取消激活时
 export function deactivate() {
 	vscode.window.showInformationMessage('取消激活');
-}
-
-
-/**
- * @description 移除文件/文件夹
- * @author TieString
- * @date 2022/11/30
- */
-async function removeFile(filepath: string) {
-	// Todo: 在 excluded 中标记杂物间的杂项
-	await config.update("files.exclude",
-		excluded = {
-			...excluded,
-			[filepath]: true, // markAsSundry
-		},
-		vscode.ConfigurationTarget.Workspace
-	);
 }

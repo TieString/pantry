@@ -18,12 +18,20 @@
       {
         "command": "pantry.markAsSundry",
         "title": "标记杂项"
+      },
+      {
+        "command": "pantry.unmarkAsSundry",
+        "title": "取消标记"
       }
     ],
     "menus": {
       "explorer/context": [
         {
           "command": "pantry.markAsSundry",
+          "group": "Pantry"
+        },
+        {
+          "command": "pantry.unmarkAsSundry",
           "group": "Pantry"
         }
       ]

@@ -3,21 +3,29 @@ import { TreeDataProvider, TreeItem, TreeItemCollapsibleState, ProviderResult, w
 import * as  fs from "fs";
 import * as path from "path";
 
+const rootPath = vscode.workspace.workspaceFolders![0].uri.path + '/';
 let config = vscode.workspace.getConfiguration();
-let excluded: Record<string, boolean> | undefined;
+let excluded: Record<string, boolean>;
+let treeDir: PantryItem[] = [];
 
 /**
  * @description 标记文件
  * @author TieString
  * @date 2022/11/30
- * @param {string} filePath 文件相对根目录路径
+ * @param {string} uri
  */
-export async function markFile(filePath: string) {
+export async function markFile(uri: vscode.Uri) {
+	const fullPath = uri.path;	// 完整路径
+	const relativePath = "**/" + fullPath.split(rootPath).join('');	// 相对根目录路径
+
+	// 将文件添加到 Pantry 中
+	vscode.window.registerTreeDataProvider('pantry', new PantryTree(uri.fsPath, 'add'));
+
 	// Todo: 在 excluded 中标记杂物间的杂项
 	await config.update("files.exclude",
 		excluded = {
 			...excluded,
-			[filePath]: true, // markAsSundry
+			[relativePath]: true, // markAsSundry
 		},
 		vscode.ConfigurationTarget.Workspace
 	);
@@ -27,20 +35,26 @@ export async function markFile(filePath: string) {
  * @description 取消标记 
  * @author TieString
  * @date 2022/12/03
- * @param {string} filePath 文件相对根目录路径
+ * @param {string} uri
  */
-export async function unmarkFile(filePath: string) {
+export async function unmarkFile(uri: vscode.Uri) {
+	vscode.window.registerTreeDataProvider('pantry', new PantryTree(uri.fsPath, 'remove'));
+
+	/* 将路径格式 [F:\\a.js] 转为 [/F:/a.js] */
+	const fullPath = '/' + uri.fsPath.replace(/\\/g, '/'),
+		relativePath = "**/" + fullPath.split(rootPath).join('');
+
 	await config.update("files.exclude",
-		excluded = {
-			...excluded,
-			[filePath]: false, // markAsSundry
-		},
+		(Reflect.deleteProperty(excluded, relativePath), excluded),
 		vscode.ConfigurationTarget.Workspace
 	);
 }
 
-export class PantryTree implements TreeDataProvider<PantryItem>{
-	constructor(private rootPath: string) { }
+class PantryTree implements TreeDataProvider<PantryItem>{
+	constructor(
+		private rootPath: string,
+		private mode: string,
+	) { }
 
 	getTreeItem(element: PantryItem): PantryItem | Thenable<PantryItem> {
 		return element;
@@ -55,27 +69,31 @@ export class PantryTree implements TreeDataProvider<PantryItem>{
 			return Promise.resolve(this.searchFiles(this.rootPath));
 		}
 		else {
-			return Promise.resolve(this.searchFiles(path.join(element.parentPath, element.label)));
+			return Promise.resolve(this.searchFiles(path.join(element.fsPath, element.label)));
 		}
 	}
 	//查找文件，文件夹
 	private searchFiles(parentPath: string): PantryItem[] {
-		var treeDir: PantryItem[] = [];
 		if (this.pathExists(parentPath)) {
-			if (fs.statSync(parentPath).isDirectory()) {
-				var fsReadDir = fs.readdirSync(parentPath, 'utf-8');
-				fsReadDir.forEach(fileName => {
-					var filePath = path.join(parentPath, fileName);//用绝对路径
-					if (fs.statSync(filePath).isDirectory()) {//目录
-						treeDir.push(new PantryItem(fileName, parentPath, TreeItemCollapsibleState.Collapsed));
-					}
-					else {//文件
-						treeDir.push(new PantryItem(fileName, parentPath, TreeItemCollapsibleState.None));
-					}
-				});
-			} 
-			else {
-				treeDir.push(new PantryItem(parentPath.split, parentPath, TreeItemCollapsibleState.None));
+			if (this.mode === "add") {
+				/* 判断是否文件夹 将其添加到 treeDir 数组中 */
+				if (fs.statSync(parentPath).isDirectory()) {
+					let fsReadDir = fs.readdirSync(parentPath, 'utf-8');
+					fsReadDir.forEach(fileName => {
+						let filePath = path.join(parentPath, fileName);//用绝对路径
+						if (fs.statSync(filePath).isDirectory()) {//目录
+							treeDir.push(new PantryItem(fileName, parentPath, TreeItemCollapsibleState.Collapsed));
+						}
+						else {	//文件
+							treeDir.push(new PantryItem(fileName, parentPath, TreeItemCollapsibleState.None));
+						}
+					});
+				}
+				else {
+					treeDir.push(new PantryItem(path.basename(parentPath), parentPath, TreeItemCollapsibleState.None));
+				}
+			} else if (this.mode === "remove") {
+				treeDir = treeDir.filter(item => item.fsPath !== parentPath);
 			}
 
 		}
@@ -91,28 +109,34 @@ export class PantryTree implements TreeDataProvider<PantryItem>{
 		}
 		return true;
 	}
+
+	private _onDidChangeTreeData: vscode.EventEmitter<undefined | null | void> = new vscode.EventEmitter<undefined | null | void>();
+	readonly onDidChangeTreeData: vscode.Event<undefined | null | void> = this._onDidChangeTreeData.event;
+	refresh(): void {
+		this._onDidChangeTreeData.fire();
+	}
 }
 
-export class PantryItem extends TreeItem {
+class PantryItem extends TreeItem {
 	constructor(
 		public readonly label: string,      //存储当前标签
-		public readonly parentPath: string,   //存储当前标签的路径，不包含该标签这个目录
+		public readonly fsPath: string,   //存储当前标签的路径，不包含该标签这个目录
 		public readonly collapsibleState: TreeItemCollapsibleState
 	) {
 		super(label, collapsibleState);
 	}
-	// //设置鼠标悬停在此项上时的工具提示文本
+	//设置鼠标悬停在此项上时的工具提示文本
 	// get tooltip(): string {
 	// 	return path.join(this.parentPath, this.label);
 	// }
-	// //为每项添加点击事件的命令
-	// command = {
-	// 	title: "this.label",
-	// 	command: 'PantryItem.itemClick',
-	// 	arguments: [    //传递两个参数
-	// 		this.label,
-	// 		path.join(this.parentPath, this.label)
-	// 	]
-	// };
-	// contextValue = 'PantryItem';//提供给 when 使用
+	//为每项添加点击事件的命令
+	command = {
+		title: "this.label",
+		command: 'PantryItem.itemClick',
+		arguments: [    //传递两个参数
+			this.label,
+			path.join(this.fsPath, this.label)
+		]
+	};
+	contextValue = 'PantryItem';//提供给 when 使用
 }

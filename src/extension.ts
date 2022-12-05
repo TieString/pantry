@@ -1,28 +1,17 @@
 import * as vscode from 'vscode';
-import { markFile, unmarkFile, PantryTree } from './file';
+import { markFile, unmarkFile } from './file';
 
-const rootPath = vscode.workspace.workspaceFolders![0].uri.path + '/';
 
 export function activate(context: vscode.ExtensionContext) {
 	// 标记为杂项
 	let markAsSundry = vscode.commands.registerCommand("pantry.markAsSundry", (uri: vscode.Uri) => {
-		const fullPath = uri.path;
-		const relativePath = "**/" + fullPath.split(rootPath).join('');
-
-		// markFile(relativePath);	// 将文件标记到 Exclude
-		// 将文件添加到 Pantry 中
-		vscode.window.registerTreeDataProvider('pantry', new PantryTree(uri.fsPath));
-	}
-	);
+		markFile(uri);	// 将文件标记到 Exclude
+	});
 
 	// 取消标记
-	let unmarkAsSundry = vscode.commands.registerCommand("pantry.unmarkAsSundry",
-		(uri: vscode.Uri) => {
-			const fullPath = uri.path,
-				relativePath = "**" + fullPath.split(rootPath).join('');
-			unmarkFile(relativePath);
-		}
-	);
+	let unmarkAsSundry = vscode.commands.registerCommand("pantry.unmarkAsSundry", (uri: vscode.Uri) => {
+		unmarkFile(uri);
+	});
 
 	context.subscriptions.push(markAsSundry, unmarkAsSundry);
 }

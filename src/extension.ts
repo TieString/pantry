@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { markFile, unmarkFile } from './file';
 
 
+// Todo: 多项选择 画框选择
 export function activate(context: vscode.ExtensionContext) {
 	// 标记为杂项
 	let markAsSundry = vscode.commands.registerCommand("pantry.markAsSundry", (uri: vscode.Uri) => {

@@ -19,7 +19,9 @@ export async function markFile(uri: vscode.Uri) {
 	const relativePath = "**/" + fullPath.split(rootPath).join('');	// 相对根目录路径
 
 	// 将文件添加到 Pantry 中
-	vscode.window.registerTreeDataProvider('pantry', new PantryTree(uri.fsPath, 'add'));
+	vscode.window.createTreeView('pantry', {
+		treeDataProvider: new PantryTree(uri.fsPath, 'add')
+	});
 
 	// Todo: 在 excluded 中标记杂物间的杂项
 	await config.update("files.exclude",
@@ -38,7 +40,9 @@ export async function markFile(uri: vscode.Uri) {
  * @param {string} uri
  */
 export async function unmarkFile(uri: vscode.Uri) {
-	vscode.window.registerTreeDataProvider('pantry', new PantryTree(uri.fsPath, 'remove'));
+	vscode.window.createTreeView('pantry', {
+		treeDataProvider: new PantryTree(uri.fsPath, 'remove')
+	});
 
 	/* 将路径格式 [F:\\a.js] 转为 [/F:/a.js] */
 	const fullPath = '/' + uri.fsPath.replace(/\\/g, '/'),
@@ -78,6 +82,7 @@ class PantryTree implements TreeDataProvider<PantryItem>{
 			if (this.mode === "add") {
 				/* 判断是否文件夹 将其添加到 treeDir 数组中 */
 				if (fs.statSync(parentPath).isDirectory()) {
+					// treeDir.push(new PantryItem(path.basename(parentPath) , parentPath, TreeItemCollapsibleState.Collapsed));
 					let fsReadDir = fs.readdirSync(parentPath, 'utf-8');
 					fsReadDir.forEach(fileName => {
 						let filePath = path.join(parentPath, fileName);//用绝对路径
@@ -125,18 +130,24 @@ class PantryItem extends TreeItem {
 	) {
 		super(label, collapsibleState);
 	}
-	//设置鼠标悬停在此项上时的工具提示文本
-	// get tooltip(): string {
-	// 	return path.join(this.parentPath, this.label);
-	// }
 	//为每项添加点击事件的命令
 	command = {
-		title: "this.label",
+		title: this.label,          // 标题
 		command: 'PantryItem.itemClick',
 		arguments: [    //传递两个参数
 			this.label,
 			path.join(this.fsPath, this.label)
-		]
+		],
+		tooltip: this.label,        // 鼠标覆盖时的小小提示框
 	};
-	contextValue = 'PantryItem';//提供给 when 使用
+	contextValue = 'PantryItem'; //提供给 when 使用
+
+	// iconPath = PantryItem.getIconUriForLabel(this.label);
+
+	// // __filename：当前文件的路径
+	// // Uri.file(join(__filename,'..','assert', ITEM_ICON_MAP.get(label)+''));   写成这样图标出不来
+	// static getIconUriForLabel(label: string): vscode.Uri {
+	// 	return vscode.Uri.file(path.join(__filename, '..', '..', 'src', 'assert', ITEM_ICON_MAP.get(label) + ''));
+	// }
+
 }

@@ -6,7 +6,6 @@ import * as path from "path";
 const rootPath = vscode.workspace.workspaceFolders![0].uri.path + '/';
 let config = vscode.workspace.getConfiguration();
 let excluded: Record<string, boolean>;
-let treeDir: PantryItem[] = [];
 
 /**
  * @description 标记文件
@@ -60,15 +59,13 @@ class PantryTree implements TreeDataProvider<PantryItem>{
 		private mode: string,
 	) { }
 
+	flag = true;
+
 	getTreeItem(element: PantryItem): PantryItem | Thenable<PantryItem> {
 		return element;
 	}
 
 	getChildren(element?: PantryItem | undefined): ProviderResult<PantryItem[]> {
-		if (!this.rootPath) {
-			window.showInformationMessage('No file in empty directory');
-			return Promise.resolve([]);
-		}
 		if (element === undefined) {
 			return Promise.resolve(this.searchFiles(this.rootPath));
 		}
@@ -78,21 +75,29 @@ class PantryTree implements TreeDataProvider<PantryItem>{
 	}
 	//查找文件，文件夹
 	private searchFiles(parentPath: string): PantryItem[] {
+		let treeDir: PantryItem[] = [];
+
 		if (this.pathExists(parentPath)) {
 			if (this.mode === "add") {
 				/* 判断是否文件夹 将其添加到 treeDir 数组中 */
 				if (fs.statSync(parentPath).isDirectory()) {
-					// treeDir.push(new PantryItem(path.basename(parentPath) , parentPath, TreeItemCollapsibleState.Collapsed));
-					let fsReadDir = fs.readdirSync(parentPath, 'utf-8');
-					fsReadDir.forEach(fileName => {
-						let filePath = path.join(parentPath, fileName);//用绝对路径
-						if (fs.statSync(filePath).isDirectory()) {//目录
-							treeDir.push(new PantryItem(fileName, parentPath, TreeItemCollapsibleState.Collapsed));
-						}
-						else {	//文件
-							treeDir.push(new PantryItem(fileName, parentPath, TreeItemCollapsibleState.None));
-						}
-					});
+					// 是否根目录 将其添加到目录中
+					if (this.flag === true) {
+						treeDir.push(new PantryItem(path.basename(parentPath), 'f:\\Code\\@Hatcher\\vite-electron-vue\\', TreeItemCollapsibleState.Collapsed));
+						this.flag = false;
+					}
+					else {
+						let fsReadDir = fs.readdirSync(parentPath, 'utf-8');
+						fsReadDir.forEach(fileName => {
+							let filePath = path.join(parentPath, fileName);//用绝对路径
+							if (fs.statSync(filePath).isDirectory()) {//目录
+								treeDir.push(new PantryItem(fileName, parentPath, TreeItemCollapsibleState.Collapsed));
+							}
+							else {	//文件
+								treeDir.push(new PantryItem(fileName, parentPath, TreeItemCollapsibleState.None));
+							}
+						});
+					}
 				}
 				else {
 					treeDir.push(new PantryItem(path.basename(parentPath), parentPath, TreeItemCollapsibleState.None));

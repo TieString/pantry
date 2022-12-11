@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
-import { TreeDataProvider, TreeItem, TreeItemCollapsibleState, ProviderResult, window } from "vscode";
 import * as  fs from "fs";
 import * as path from "path";
 
 const rootPath = vscode.workspace.workspaceFolders![0].uri.path + '/';
 let config = vscode.workspace.getConfiguration();
 let excluded: Record<string, boolean>;
+let globalTreeDir: PantryItem[] = [];
 
 /**
  * @description 标记文件
@@ -53,19 +53,20 @@ export async function unmarkFile(uri: vscode.Uri) {
 	);
 }
 
-class PantryTree implements TreeDataProvider<PantryItem>{
+class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 	constructor(
 		private rootPath: string,
 		private mode: string,
 	) { }
 
-	flag = true;
+	// 添加的目录，而非展开的内容
+	private flag = true;
 
 	getTreeItem(element: PantryItem): PantryItem | Thenable<PantryItem> {
 		return element;
 	}
 
-	getChildren(element?: PantryItem | undefined): ProviderResult<PantryItem[]> {
+	getChildren(element?: PantryItem | undefined): vscode.ProviderResult<PantryItem[]> {
 		if (element === undefined) {
 			return Promise.resolve(this.searchFiles(this.rootPath));
 		}
@@ -83,7 +84,7 @@ class PantryTree implements TreeDataProvider<PantryItem>{
 				if (fs.statSync(parentPath).isDirectory()) {
 					// 是否根目录 将其添加到目录中
 					if (this.flag === true) {
-						treeDir.push(new PantryItem(path.basename(parentPath), 'f:\\Code\\@Hatcher\\vite-electron-vue\\', TreeItemCollapsibleState.Collapsed));
+						treeDir.push(new PantryItem(path.basename(parentPath), 'f:\\Code\\@Hatcher\\vite-electron-vue\\', vscode.TreeItemCollapsibleState.Collapsed));
 						this.flag = false;
 					}
 					else {
@@ -91,23 +92,23 @@ class PantryTree implements TreeDataProvider<PantryItem>{
 						fsReadDir.forEach(fileName => {
 							let filePath = path.join(parentPath, fileName);//用绝对路径
 							if (fs.statSync(filePath).isDirectory()) {//目录
-								treeDir.push(new PantryItem(fileName, parentPath, TreeItemCollapsibleState.Collapsed));
+								treeDir.push(new PantryItem(fileName, parentPath, vscode.TreeItemCollapsibleState.Collapsed));
 							}
 							else {	//文件
-								treeDir.push(new PantryItem(fileName, parentPath, TreeItemCollapsibleState.None));
+								treeDir.push(new PantryItem(fileName, parentPath, vscode.TreeItemCollapsibleState.None));
 							}
 						});
 					}
 				}
 				else {
-					treeDir.push(new PantryItem(path.basename(parentPath), parentPath, TreeItemCollapsibleState.None));
+					treeDir.push(new PantryItem(path.basename(parentPath), parentPath, vscode.TreeItemCollapsibleState.None));
 				}
 			} else if (this.mode === "remove") {
-				treeDir = treeDir.filter(item => item.fsPath !== parentPath);
+				globalTreeDir = globalTreeDir.filter(item => item.fsPath !== parentPath);
 			}
-
 		}
-		return treeDir;
+		globalTreeDir = [...treeDir, ...globalTreeDir];
+		return globalTreeDir;
 	}
 	//判断路径是否存在
 	private pathExists(filePath: string): boolean {
@@ -127,11 +128,11 @@ class PantryTree implements TreeDataProvider<PantryItem>{
 	}
 }
 
-class PantryItem extends TreeItem {
+class PantryItem extends vscode.TreeItem {
 	constructor(
 		public readonly label: string,      //存储当前标签
 		public readonly fsPath: string,   //存储当前标签的路径，不包含该标签这个目录
-		public readonly collapsibleState: TreeItemCollapsibleState
+		public readonly collapsibleState: vscode.TreeItemCollapsibleState
 	) {
 		super(label, collapsibleState);
 	}

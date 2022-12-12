@@ -68,10 +68,17 @@ class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 
 	getChildren(element?: PantryItem | undefined): vscode.ProviderResult<PantryItem[]> {
 		if (element === undefined) {
-			return Promise.resolve(this.searchFiles(this.rootPath));
+			if (this.mode === "add") {
+				let treeDir = this.searchFiles(this.rootPath);
+				globalTreeDir = [...treeDir, ...globalTreeDir];
+			} else if (this.mode === "remove") {
+				globalTreeDir = globalTreeDir.filter(item => item.fsPath !== this.rootPath);
+			}
+			return Promise.resolve(globalTreeDir);
 		}
 		else {
-			return Promise.resolve(this.searchFiles(path.join(element.fsPath, element.label)));
+			let treeDir = this.searchFiles(path.join(element.fsPath, element.label));
+			return Promise.resolve(treeDir);
 		}
 	}
 	//查找文件，文件夹
@@ -79,36 +86,32 @@ class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 		let treeDir: PantryItem[] = [];
 
 		if (this.pathExists(parentPath)) {
-			if (this.mode === "add") {
-				/* 判断是否文件夹 将其添加到 treeDir 数组中 */
-				if (fs.statSync(parentPath).isDirectory()) {
-					// 是否根目录 将其添加到目录中
-					if (this.flag === true) {
-						treeDir.push(new PantryItem(path.basename(parentPath), 'f:\\Code\\@Hatcher\\vite-electron-vue\\', vscode.TreeItemCollapsibleState.Collapsed));
-						this.flag = false;
-					}
-					else {
-						let fsReadDir = fs.readdirSync(parentPath, 'utf-8');
-						fsReadDir.forEach(fileName => {
-							let filePath = path.join(parentPath, fileName);//用绝对路径
-							if (fs.statSync(filePath).isDirectory()) {//目录
-								treeDir.push(new PantryItem(fileName, parentPath, vscode.TreeItemCollapsibleState.Collapsed));
-							}
-							else {	//文件
-								treeDir.push(new PantryItem(fileName, parentPath, vscode.TreeItemCollapsibleState.None));
-							}
-						});
-					}
+			/* 判断是否文件夹 将其添加到 treeDir 数组中 */
+			if (fs.statSync(parentPath).isDirectory()) {
+				// 是否根目录 将其添加到目录中
+				if (this.flag === true) {
+					treeDir.push(new PantryItem(path.basename(parentPath), 'f:\\Code\\@Hatcher\\vite-electron-vue\\', vscode.TreeItemCollapsibleState.Collapsed));
+					this.flag = false;
 				}
 				else {
-					treeDir.push(new PantryItem(path.basename(parentPath), parentPath, vscode.TreeItemCollapsibleState.None));
+					let fsReadDir = fs.readdirSync(parentPath, 'utf-8');
+					fsReadDir.forEach(fileName => {
+						let filePath = path.join(parentPath, fileName);//用绝对路径
+						if (fs.statSync(filePath).isDirectory()) {//目录
+							treeDir.push(new PantryItem(fileName, parentPath, vscode.TreeItemCollapsibleState.Collapsed));
+						}
+						else {	//文件
+							treeDir.push(new PantryItem(fileName, parentPath, vscode.TreeItemCollapsibleState.None));
+						}
+					});
 				}
-			} else if (this.mode === "remove") {
-				globalTreeDir = globalTreeDir.filter(item => item.fsPath !== parentPath);
 			}
+			else {
+				treeDir.push(new PantryItem(path.basename(parentPath), parentPath, vscode.TreeItemCollapsibleState.None));
+			}
+
 		}
-		globalTreeDir = [...treeDir, ...globalTreeDir];
-		return globalTreeDir;
+		return treeDir;
 	}
 	//判断路径是否存在
 	private pathExists(filePath: string): boolean {

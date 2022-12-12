@@ -39,12 +39,13 @@ export async function markFile(uri: vscode.Uri) {
  * @param {string} uri
  */
 export async function unmarkFile(uri: vscode.Uri) {
+	const fullFspath = uri.fsPath + uri.label;
 	vscode.window.createTreeView('pantry', {
-		treeDataProvider: new PantryTree(uri.fsPath, 'remove')
+		treeDataProvider: new PantryTree(fullFspath, 'remove')
 	});
 
 	/* 将路径格式 [F:\\a.js] 转为 [/F:/a.js] */
-	const fullPath = '/' + uri.fsPath.replace(/\\/g, '/'),
+	const fullPath = '/' + fullFspath.replace(/\\/g, '/'),
 		relativePath = "**/" + fullPath.split(rootPath).join('');
 
 	await config.update("files.exclude",
@@ -59,7 +60,7 @@ class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 		private mode: string,
 	) { }
 
-	// 添加的目录，而非展开的内容
+	// 添加的是目录项，而非展开的内容
 	private flag = true;
 
 	getTreeItem(element: PantryItem): PantryItem | Thenable<PantryItem> {
@@ -68,36 +69,38 @@ class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 
 	getChildren(element?: PantryItem | undefined): vscode.ProviderResult<PantryItem[]> {
 		if (element === undefined) {
+			// 根目录
 			if (this.mode === "add") {
 				let treeDir = this.searchFiles(this.rootPath);
 				globalTreeDir = [...treeDir, ...globalTreeDir];
 			} else if (this.mode === "remove") {
-				globalTreeDir = globalTreeDir.filter(item => item.fsPath !== this.rootPath);
+				// 取消标记文件，从全局树目录中去除该路径
+				globalTreeDir = globalTreeDir.filter(item => item.fsPath + item.label !== this.rootPath);
 			}
 			return Promise.resolve(globalTreeDir);
 		}
 		else {
+			// 展开后的内容
 			let treeDir = this.searchFiles(path.join(element.fsPath, element.label));
 			return Promise.resolve(treeDir);
 		}
 	}
+
 	//查找文件，文件夹
 	private searchFiles(parentPath: string): PantryItem[] {
 		let treeDir: PantryItem[] = [];
 
 		if (this.pathExists(parentPath)) {
-			/* 判断是否文件夹 将其添加到 treeDir 数组中 */
-			if (fs.statSync(parentPath).isDirectory()) {
-				// 是否根目录 将其添加到目录中
-				if (this.flag === true) {
+			if (fs.statSync(parentPath).isDirectory()) {	// 路径是否文件夹
+				if (this.flag === true) {	// 目录项
 					treeDir.push(new PantryItem(path.basename(parentPath), 'f:\\Code\\@Hatcher\\vite-electron-vue\\', vscode.TreeItemCollapsibleState.Collapsed));
 					this.flag = false;
 				}
-				else {
+				else {	// 目录下拉列表内容
 					let fsReadDir = fs.readdirSync(parentPath, 'utf-8');
 					fsReadDir.forEach(fileName => {
-						let filePath = path.join(parentPath, fileName);//用绝对路径
-						if (fs.statSync(filePath).isDirectory()) {//目录
+						let filePath = path.join(parentPath, fileName);	//用绝对路径
+						if (fs.statSync(filePath).isDirectory()) {	//目录
 							treeDir.push(new PantryItem(fileName, parentPath, vscode.TreeItemCollapsibleState.Collapsed));
 						}
 						else {	//文件
@@ -113,6 +116,7 @@ class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 		}
 		return treeDir;
 	}
+
 	//判断路径是否存在
 	private pathExists(filePath: string): boolean {
 		try {
@@ -124,6 +128,7 @@ class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 		return true;
 	}
 
+	// 更新
 	private _onDidChangeTreeData: vscode.EventEmitter<undefined | null | void> = new vscode.EventEmitter<undefined | null | void>();
 	readonly onDidChangeTreeData: vscode.Event<undefined | null | void> = this._onDidChangeTreeData.event;
 	refresh(): void {

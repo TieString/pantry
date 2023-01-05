@@ -13,7 +13,7 @@ let globalTreeDir: PantryItem[] = [];
  * @date 2022/11/30
  * @param {string} uri
  */
-export async function markFile(uri: vscode.Uri) {
+export async function markFile(uri: vscode.Uri, context: vscode.ExtensionContext) {
 	const fullPath = uri.path;	// 完整路径
 	const relativePath = "**/" + fullPath.split(rootPath).join('');	// 相对根目录路径
 
@@ -30,6 +30,10 @@ export async function markFile(uri: vscode.Uri) {
 		},
 		vscode.ConfigurationTarget.Workspace
 	);
+
+	// 添加到工作空间域中
+	context.workspaceState.update('globalTreeDir', globalTreeDir);
+	context.workspaceState.update('excluded', excluded);
 }
 
 /**
@@ -38,7 +42,7 @@ export async function markFile(uri: vscode.Uri) {
  * @date 2022/12/03
  * @param {string} uri
  */
-export async function unmarkFile(uri: vscode.Uri) {
+export async function unmarkFile(uri: vscode.Uri, context: vscode.ExtensionContext) {
 	const fullFspath = uri.fsPath + uri.label;
 	vscode.window.createTreeView('pantry', {
 		treeDataProvider: new PantryTree(fullFspath, 'remove')
@@ -52,6 +56,29 @@ export async function unmarkFile(uri: vscode.Uri) {
 		(Reflect.deleteProperty(excluded, relativePath), excluded),
 		vscode.ConfigurationTarget.Workspace
 	);
+
+	// 添加到工作空间域中
+	context.workspaceState.update('globalTreeDir', globalTreeDir);
+	context.workspaceState.update('excluded', excluded);
+}
+
+// 文件/文件夹点击
+export function pantryItemClick(path: string) {
+	if (fs.statSync(path).isDirectory()) {
+		// vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(path), false);
+	} else {
+		vscode.workspace.openTextDocument(path).then(doc => {
+			vscode.window.showTextDocument(doc);
+		});
+	}
+}
+
+export function activateData( context: vscode.ExtensionContext) {
+	globalTreeDir = context.workspaceState.get('globalTreeDir');
+	excluded = context.workspaceState.get('excluded');
+	vscode.window.createTreeView('pantry', {
+		treeDataProvider: new PantryTree('', 'add')
+	});
 }
 
 class PantryTree implements vscode.TreeDataProvider<PantryItem>{
@@ -75,7 +102,7 @@ class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 				globalTreeDir = [...treeDir, ...globalTreeDir];
 			} else if (this.mode === "remove") {
 				// 取消标记文件，从全局树目录中去除该路径
-				globalTreeDir = globalTreeDir.filter(item => item.fsPath+item.label !== this.rootPath);
+				globalTreeDir = globalTreeDir.filter(item => item.fsPath + item.label !== this.rootPath);
 			}
 			return Promise.resolve(globalTreeDir);
 		}

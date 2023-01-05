@@ -42,7 +42,7 @@ export async function markFile(uri: vscode.Uri, context: vscode.ExtensionContext
  * @date 2022/12/03
  * @param {string} uri
  */
-export async function unmarkFile(uri: vscode.Uri, context: vscode.ExtensionContext) {
+export async function unmarkFile(uri: { fsPath: string, label: string }, context: vscode.ExtensionContext) {
 	const fullFspath = uri.fsPath + uri.label;
 	vscode.window.createTreeView('pantry', {
 		treeDataProvider: new PantryTree(fullFspath, 'remove')
@@ -73,9 +73,11 @@ export function pantryItemClick(path: string) {
 	}
 }
 
-export function activateData( context: vscode.ExtensionContext) {
-	globalTreeDir = context.workspaceState.get('globalTreeDir');
-	excluded = context.workspaceState.get('excluded');
+export function activateData(context: vscode.ExtensionContext) {
+	const treeDir = context.workspaceState.get('globalTreeDir') as PantryItem[];
+	if (treeDir) { globalTreeDir = treeDir; }
+	const ex = context.workspaceState.get('excluded') as Record<string, boolean>;
+	if (ex) { excluded = ex; }
 	vscode.window.createTreeView('pantry', {
 		treeDataProvider: new PantryTree('', 'add')
 	});

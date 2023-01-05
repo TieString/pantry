@@ -2,10 +2,11 @@
     "name": "pantry",
     "displayName": "pantry",
     "description": "a room to place sundry files",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "engines": {
         "vscode": "^1.73.0"
     },
+    "publisher": "tiestring",
     "categories": [
         "Other"
     ],

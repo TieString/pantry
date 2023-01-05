@@ -42,8 +42,8 @@ export async function markFile(uri: vscode.Uri, context: vscode.ExtensionContext
  * @date 2022/12/03
  * @param {string} uri
  */
-export async function unmarkFile(uri: { fsPath: string, label: string }, context: vscode.ExtensionContext) {
-	const fullFspath = uri.fsPath + uri.label;
+export async function unmarkFile(uri: vscode.Uri, context: vscode.ExtensionContext) {
+	const fullFspath = uri.fsPath + (uri as unknown as { label: string }).label;
 	vscode.window.createTreeView('pantry', {
 		treeDataProvider: new PantryTree(fullFspath, 'remove')
 	});

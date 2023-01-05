@@ -14,7 +14,14 @@ export function activate(context: vscode.ExtensionContext) {
 		unmarkFile(uri);
 	});
 
-	context.subscriptions.push(markAsSundry, unmarkAsSundry);
+	// 打开文件
+	let openFile = vscode.commands.registerCommand('pantry.openFile', (file: string) => {
+		vscode.workspace.openTextDocument(file).then(doc => {
+			vscode.window.showTextDocument(doc);
+		});
+	});
+
+	context.subscriptions.push(markAsSundry, unmarkAsSundry, openFile);
 }
 
 // 扩展取消激活时

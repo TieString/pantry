@@ -75,7 +75,7 @@ class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 				globalTreeDir = [...treeDir, ...globalTreeDir];
 			} else if (this.mode === "remove") {
 				// 取消标记文件，从全局树目录中去除该路径
-				globalTreeDir = globalTreeDir.filter(item => item.fsPath + item.label !== this.rootPath);
+				globalTreeDir = globalTreeDir.filter(item => item.fsPath+item.label !== this.rootPath);
 			}
 			return Promise.resolve(globalTreeDir);
 		}
@@ -89,11 +89,13 @@ class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 	//查找文件，文件夹
 	private searchFiles(parentPath: string): PantryItem[] {
 		let treeDir: PantryItem[] = [];
+		const name = path.basename(parentPath);
+		const fsPath = parentPath.split(name)[0];
 
 		if (this.pathExists(parentPath)) {
 			if (fs.statSync(parentPath).isDirectory()) {	// 路径是否文件夹
 				if (this.flag === true) {	// 目录项
-					treeDir.push(new PantryItem(path.basename(parentPath), 'f:\\Code\\@Hatcher\\vite-electron-vue\\', vscode.TreeItemCollapsibleState.Collapsed));
+					treeDir.push(new PantryItem(name, fsPath, vscode.TreeItemCollapsibleState.Collapsed));
 					this.flag = false;
 				}
 				else {	// 目录下拉列表内容
@@ -110,14 +112,14 @@ class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 				}
 			}
 			else {
-				treeDir.push(new PantryItem(path.basename(parentPath), parentPath, vscode.TreeItemCollapsibleState.None));
+				treeDir.push(new PantryItem(name, fsPath, vscode.TreeItemCollapsibleState.None));
 			}
 
 		}
 		return treeDir;
 	}
 
-	//判断路径是否存在
+	/* 判断路径是否存在 */
 	private pathExists(filePath: string): boolean {
 		try {
 			fs.accessSync(filePath);
@@ -139,7 +141,7 @@ class PantryTree implements vscode.TreeDataProvider<PantryItem>{
 class PantryItem extends vscode.TreeItem {
 	constructor(
 		public readonly label: string,      //存储当前标签
-		public readonly fsPath: string,   //存储当前标签的路径，不包含该标签这个目录
+		public readonly fsPath: string,   //存储当前标签的路径，不包含该标签名称
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState
 	) {
 		super(label, collapsibleState);
@@ -147,10 +149,9 @@ class PantryItem extends vscode.TreeItem {
 	//为每项添加点击事件的命令
 	command = {
 		title: this.label,          // 标题
-		command: 'PantryItem.itemClick',
-		arguments: [    //传递两个参数
-			this.label,
-			path.join(this.fsPath, this.label)
+		command: 'pantry.openFile',
+		arguments: [
+			this.fsPath + this.label
 		],
 		tooltip: this.label,        // 鼠标覆盖时的小小提示框
 	};
